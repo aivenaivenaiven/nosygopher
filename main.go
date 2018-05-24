@@ -52,7 +52,7 @@ func main() {
           outpath: outpath,
           bpf: bpf,
           quiet: quiet,
-          snapshot_len: 1024,
+          snapshotLen: 1024,
           timeout: 30 * time.Second,
       }
       err := ng.Sniff()
