@@ -35,6 +35,13 @@ func (ng *NosyGopher) Sniff() error {
         defer f.Close()
     }
 
+    // Set BPFFilter if present
+    if ng.bpf != "" {
+        if err := handle.SetBPFFilter(ng.bpf); err != nil {
+            return err
+        }
+    }
+
     packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
     for packet := range packetSource.Packets() {
         fmt.Println(packet)
