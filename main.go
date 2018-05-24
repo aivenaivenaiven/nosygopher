@@ -4,6 +4,7 @@ import (
         "log"
         "os"
         "time"
+        "fmt"
 
         "github.com/urfave/cli"
 )
@@ -56,7 +57,7 @@ func main() {
       }
       err := ng.Sniff()
       if err != nil {
-          return err
+          return fmt.Errorf("nosy gopher has issues: %s", err.Error())
       }
       return nil
   }
