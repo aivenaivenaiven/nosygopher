@@ -14,6 +14,7 @@ var (
         outpath string
         bpf string
         quiet bool = false
+        promisc bool = false
 )
 
 func main() {
@@ -44,6 +45,11 @@ func main() {
       Usage:       "if present will not log to stdout",
       Destination:  &quiet,
     },
+    cli.BoolFlag{
+      Name:        "promiscuous",
+      Usage:       "capture in promiscuous mode",
+      Destination:  &promisc,
+    },
   }
 
   app.Action = func(c *cli.Context) error {
@@ -52,6 +58,7 @@ func main() {
           outpath: outpath,
           bpf: bpf,
           quiet: quiet,
+          promisc: promisc,
           snapshotLen: 1024,
           timeout: 30 * time.Second,
       }

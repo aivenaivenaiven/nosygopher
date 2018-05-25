@@ -12,16 +12,16 @@ import (
 
 type NosyGopher struct {
     iface, outpath, bpf string
-    quiet bool
+    quiet, promisc bool
     snapshotLen int
     timeout time.Duration
 }
 
 func (ng *NosyGopher) Sniff() error {
-    fmt.Printf("nosy gopher is sniffing on %s...", ng.iface)
+    fmt.Printf("nosy gopher is sniffing on %s...\n", ng.iface)
 
     // Open device
-    handle, err := pcap.OpenLive(ng.iface, int32(ng.snapshotLen), true, ng.timeout)
+    handle, err := pcap.OpenLive(ng.iface, int32(ng.snapshotLen), ng.promisc, ng.timeout)
     if err != nil {
         return err
     }
@@ -44,7 +44,7 @@ func (ng *NosyGopher) Sniff() error {
 
     packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
     for packet := range packetSource.Packets() {
-        fmt.Println(packet)
+        if !ng.quiet { fmt.Println(packet) }
         if writer != nil { writer.WritePacket(packet.Metadata().CaptureInfo, packet.Data()) }
     }
 
