@@ -7,6 +7,7 @@ import (
         "fmt"
 
         "github.com/urfave/cli"
+        "github.com/google/gopacket/pcap"
 )
 
 var (
@@ -20,7 +21,7 @@ var (
 func main() {
   app := cli.NewApp()
   app.Name = "nosygopher"
-  app.Usage = "sniff shit"
+  app.Usage = "sniff things"
   app.Version = "0.0.1"
 
   app.Flags = []cli.Flag {
@@ -69,8 +70,32 @@ func main() {
       return nil
   }
 
+  app.Commands = []cli.Command {
+    cli.Command {
+      Name: "list",
+      Usage: "list interfaces nosygopher can sniff",
+      Action: listInterfaces,
+    },
+  }
+
   err := app.Run(os.Args)
   if err != nil {
     log.Fatal(err)
   }
+}
+
+func listInterfaces(c *cli.Context) error {
+  fmt.Println("Here's what nosygopher can sniff...")
+
+  var devices []pcap.Interface
+  var err error
+  devices, err = pcap.FindAllDevs()
+  if err != nil {
+    return err
+  }
+  for i, device := range devices {
+    fmt.Printf("%d: %s\n", i+1, device.Name)
+  }
+
+  return nil
 }
