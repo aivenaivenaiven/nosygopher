@@ -5,7 +5,7 @@ nosygopher is a Golang command line utility for sniffing those smelly network pa
 ## Installation
 
 ```
-go get github.com/aivensong/
+go get "github.com/aivensong/nosygopher"
 ```
 
 Make sure your `$GOPATH/bin` is in your `$PATH`.
