@@ -11,41 +11,52 @@ import (
 )
 
 type NosyGopher struct {
-    iface, outpath, bpf string
+    iface []string
+    outpath, bpf string
     quiet, promisc bool
     snapshotLen int
     timeout time.Duration
 }
 
-func (ng *NosyGopher) Sniff() error {
-    fmt.Printf("nosy gopher is sniffing on %s...\n", ng.iface)
+type NGResult struct {
+  err string
+  packet gopacket.Packet
+}
 
-    // Open device
-    handle, err := pcap.OpenLive(ng.iface, int32(ng.snapshotLen), ng.promisc, ng.timeout)
-    if err != nil {
-        return err
-    }
-    defer handle.Close()
+func(ng *NosyGopher) Sniff() error {
+  // Create writer if outpath is set
+  var writer *pcapgo.Writer
+  var f *os.File
+  if ng.outpath != "" {
+      writer, f = ng.writer(handle)
+      defer f.Close()
+  }
 
-    // Create writer if outpath is set
-    var writer *pcapgo.Writer
-    var f *os.File
-    if ng.outpath != "" {
-        writer, f = ng.writer(handle)
-        defer f.Close()
-    }
+}
 
-    // Set BPFFilter if present
-    if ng.bpf != "" {
+func (ng *NosyGopher) Sniff(dev string) <-chan NGResult {
+    fmt.Printf("nosy gopher is sniffing on %s...\n", dev)
+    c := make(chan string)
+
+    go func() {
+      // Open device
+      handle, err := pcap.OpenLive(dev, int32(ng.snapshotLen), ng.promisc, ng.timeout)
+      if err != nil {
+        return NGResult{packet: nil, err: err}
+      }
+      defer handle.Close()
+
+      // Set BPFFilter if present
+      if ng.bpf != "" {
         if err := handle.SetBPFFilter(ng.bpf); err != nil {
-            return err
+          return NGResult{packet: nil, err: err}
         }
-    }
+      }
 
-    packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
-    for packet := range packetSource.Packets() {
-        if !ng.quiet { fmt.Println(packet) }
-        if writer != nil { writer.WritePacket(packet.Metadata().CaptureInfo, packet.Data()) }
+      packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+      for packet := range packetSource.Packets() {
+        c <- NGResult{packet: packet, err: nil}
+      }
     }
 
     return nil
@@ -57,4 +68,17 @@ func (ng *NosyGopher) writer(handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
     w := pcapgo.NewWriter(f)
     w.WriteFileHeader(uint32(ng.snapshotLen), handle.LinkType())
     return w, f
+}
+
+// Variadic fanin function
+func fanin(inputs ...<-chan string) <-chan string {
+  agg := make(chan string)
+
+  _, ch = range inputs {
+    go func(c chan string) {
+      for msg := range c {
+        agg <- msg
+      }
+    }(ch)
+  }
 }
