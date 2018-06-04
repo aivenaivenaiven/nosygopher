@@ -11,7 +11,7 @@ import (
 )
 
 type NosyGopher struct {
-	iface          []string
+	ifaces         []string
 	outpath, bpf   string
 	quiet, promisc bool
 	snapshotLen    int
@@ -21,13 +21,13 @@ type NosyGopher struct {
 type NGResult struct {
 	err    error
 	packet gopacket.Packet
-	writer pcapgo.Writer
+	writer *pcapgo.Writer
 }
 
 func (ng *NosyGopher) Sniff() error {
 	var chans []<-chan NGResult
-	for _, dev := range ng.iface {
-		append(chans, ng.sniffDevice(dev))
+	for _, dev := range ng.ifaces {
+		chans = append(chans, ng.sniffDevice(dev))
 	}
 
 	c := fanin(chans...)
@@ -36,7 +36,7 @@ func (ng *NosyGopher) Sniff() error {
 			fmt.Println(res.packet)
 		}
 		if res.writer != nil {
-			res.writer.WritePacket(res.packet.Metadata().CaptureInfo, packet.Data())
+			res.writer.WritePacket(res.packet.Metadata().CaptureInfo, res.packet.Data())
 		}
 	}
 
@@ -51,14 +51,14 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 		// Open device
 		handle, err := pcap.OpenLive(dev, int32(ng.snapshotLen), ng.promisc, ng.timeout)
 		if err != nil {
-			return NGResult{packet: nil, writer: nil, err: err}
+			c <- NGResult{packet: nil, writer: nil, err: err}
 		}
 		defer handle.Close()
 
 		// Set BPFFilter if present
 		if ng.bpf != "" {
 			if err := handle.SetBPFFilter(ng.bpf); err != nil {
-				return NGResult{packet: nil, writer: nil, err: err}
+				c <- NGResult{packet: nil, writer: nil, err: err}
 			}
 		}
 
@@ -92,10 +92,12 @@ func fanin(inputs ...<-chan NGResult) <-chan NGResult {
 	agg := make(chan NGResult)
 
 	for _, ch := range inputs {
-		go func(c chan NGResult) {
+		go func(c <-chan NGResult) {
 			for msg := range c {
 				agg <- msg
 			}
 		}(ch)
 	}
+
+	return agg
 }

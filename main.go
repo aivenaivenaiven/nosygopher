@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	iface   string
-	outpath string
-	bpf     string
-	quiet   bool = false
-	promisc bool = false
+	ifaceList string
+	outpath   string
+	bpf       string
+	quiet     bool = false
+	promisc   bool = false
 )
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 			Name:        "interface",
 			Value:       "en0",
 			Usage:       "comma-separated list of interface devices to sniff on (e.g. en0,bridge0)",
-			Destination: &iface,
+			Destination: &ifaceList,
 		},
 		cli.StringFlag{
 			Name:        "outpath",
@@ -55,8 +55,9 @@ func main() {
 	}
 
 	app.Action = func(c *cli.Context) error {
+		ifaces := strings.Split(ifaceList, ",")
 		ng := NosyGopher{
-			iface:       iface,
+			ifaces:      ifaces,
 			outpath:     outpath,
 			bpf:         bpf,
 			quiet:       quiet,
