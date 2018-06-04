@@ -32,6 +32,10 @@ func (ng *NosyGopher) Sniff() error {
 
 	c := fanin(chans...)
 	for res := range c {
+		if res.err != nil {
+			return res.err
+		}
+
 		if !ng.quiet {
 			fmt.Println(res.packet)
 		}
@@ -52,6 +56,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 		handle, err := pcap.OpenLive(dev, int32(ng.snapshotLen), ng.promisc, ng.timeout)
 		if err != nil {
 			c <- NGResult{packet: nil, writer: nil, err: err}
+			return
 		}
 		defer handle.Close()
 
@@ -59,6 +64,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 		if ng.bpf != "" {
 			if err := handle.SetBPFFilter(ng.bpf); err != nil {
 				c <- NGResult{packet: nil, writer: nil, err: err}
+				return
 			}
 		}
 
@@ -66,7 +72,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 		var writer *pcapgo.Writer
 		var f *os.File
 		if ng.outpath != "" {
-			writer, f = ng.writer(handle)
+			writer, f = ng.writer(dev, handle)
 			defer f.Close()
 		}
 
@@ -80,8 +86,8 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 }
 
 // Creates file, writer and writes file header
-func (ng *NosyGopher) writer(handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
-	f, _ := os.Create(ng.outpath)
+func (ng *NosyGopher) writer(dev string, handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
+	f, _ := os.Create(dev + "_" + ng.outpath)
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(uint32(ng.snapshotLen), handle.LinkType())
 	return w, f
