@@ -25,7 +25,7 @@ type NGResult struct {
 }
 
 func(ng *NosyGopher) Sniff() error {
-  var []<-chan string chans
+  var chans []<-chan NGResult
   for _, dev := range ng.iface {
     append(chans, ng.sniffDevice(dev))
   }
@@ -70,7 +70,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
       for packet := range packetSource.Packets() {
         c <- NGResult{packet: packet, writer: writer, err: nil}
       }
-    }
+    }()
 
     return c
 }
@@ -84,11 +84,11 @@ func (ng *NosyGopher) writer(handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
 }
 
 // Variadic fanin function
-func fanin(inputs ...<-chan string) <-chan string {
-  agg := make(chan string)
+func fanin(inputs ...<-chan NGResult) <-chan NGResult {
+  agg := make(chan NGResult)
 
-  _, ch = range inputs {
-    go func(c chan string) {
+  for _, ch := range inputs {
+    go func(c chan NGResult) {
       for msg := range c {
         agg <- msg
       }

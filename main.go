@@ -5,6 +5,7 @@ import (
         "os"
         "time"
         "fmt"
+        "strings"
 
         "github.com/urfave/cli"
         "github.com/google/gopacket/pcap"
@@ -28,7 +29,7 @@ func main() {
     cli.StringFlag{
       Name:        "interface",
       Value:       "en0",
-      Usage:       "interface device to sniff on (en0, bridge0)",
+      Usage:       "comma-separated list of interface devices to sniff on (e.g. en0,bridge0)",
       Destination:  &iface,
     },
     cli.StringFlag{
