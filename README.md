@@ -18,7 +18,7 @@ Make sure your `$GOPATH/bin` is in your `$PATH`.
 
 To see a list of all available commands and options, run `nosygopher help`.
 
-```
+```console
 $ nosygopher help
 NAME:
    nosygopher - sniff things
