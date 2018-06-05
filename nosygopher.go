@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"reflect"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
@@ -37,7 +38,20 @@ func (ng *NosyGopher) Sniff() error {
 		}
 
 		if !ng.quiet {
-			fmt.Println(res.packet)
+			// fmt.Println(res.packet)
+			// if app := res.packet.ApplicationLayer(); app != nil {
+			// 	fmt.Printf("PAYLOAD: %v\n", string(app.Payload()))
+			// }
+			if net := res.packet.NetworkLayer(); net != nil {
+				fmt.Printf("NETWORK LAYER: %+v\n", net)
+				fmt.Printf("OK: %v\n", net.(reflect.TypeOf(net)))
+				fmt.Printf("STUFF: %v\n", reflect.TypeOf(net))
+				// fmt.Printf("STUFF: %v\n", net.Protocol)
+				// for i := 0; i < netType.NumMethod(); i++ {
+				//     method := netType.Method(i)
+				//     fmt.Println(method.Name)
+				// }
+			}
 		}
 		if res.writer != nil {
 			res.writer.WritePacket(res.packet.Metadata().CaptureInfo, res.packet.Data())
@@ -84,6 +98,11 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 
 	return c
 }
+
+// Format a packet for printing succinctly
+// func (ng *NosyGopher) printPacket(packet gopacket.Packet) {
+// 	var srcIP, destIP, proto
+// }
 
 // Creates file, writer and writes file header
 func (ng *NosyGopher) writer(dev string, handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
