@@ -25,58 +25,44 @@ func main() {
 	app.Usage = "sniff things"
 	app.Version = "0.0.1"
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "interface",
-			Value:       "en0",
-			Usage:       "comma-separated list of interface devices to sniff on (e.g. en0,bridge0)",
-			Destination: &ifaceList,
-		},
-		cli.StringFlag{
-			Name:        "outpath",
-			Usage:       "path to write pcap file to, if left empty will not write",
-			Destination: &outpath,
-		},
-		cli.StringFlag{
-			Name:        "bpf",
-			Usage:       "berkeley packet filter string ('tcp and port 80')",
-			Destination: &bpf,
-		},
-		cli.BoolFlag{
-			Name:        "quiet",
-			Usage:       "if present will not log to stdout",
-			Destination: &quiet,
-		},
-		cli.BoolFlag{
-			Name:        "promiscuous",
-			Usage:       "capture in promiscuous mode",
-			Destination: &promisc,
-		},
-	}
-
-	app.Action = func(c *cli.Context) error {
-		ifaces := strings.Split(ifaceList, ",")
-		ng := NosyGopher{
-			ifaces:      ifaces,
-			outpath:     outpath,
-			bpf:         bpf,
-			quiet:       quiet,
-			promisc:     promisc,
-			snapshotLen: 1024,
-			timeout:     30 * time.Second,
-		}
-		err := ng.Sniff()
-		if err != nil {
-			return fmt.Errorf("nosy gopher has issues: %s", err.Error())
-		}
-		return nil
-	}
-
 	app.Commands = []cli.Command{
 		cli.Command{
 			Name:   "list",
 			Usage:  "list interfaces nosygopher can sniff",
 			Action: listInterfaces,
+		},
+		cli.Command{
+			Name:  "sniff",
+			Usage: "print contents of packets on a network interface",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "interface",
+					Value:       "en0",
+					Usage:       "comma-separated list of interface devices to sniff on (e.g. en0,bridge0)",
+					Destination: &ifaceList,
+				},
+				cli.StringFlag{
+					Name:        "outpath",
+					Usage:       "path to write pcap file to, if left empty will not write",
+					Destination: &outpath,
+				},
+				cli.StringFlag{
+					Name:        "bpf",
+					Usage:       "berkeley packet filter string ('tcp and port 80')",
+					Destination: &bpf,
+				},
+				cli.BoolFlag{
+					Name:        "quiet",
+					Usage:       "if present will not log to stdout",
+					Destination: &quiet,
+				},
+				cli.BoolFlag{
+					Name:        "promiscuous",
+					Usage:       "capture in promiscuous mode",
+					Destination: &promisc,
+				},
+			},
+			Action: smell,
 		},
 	}
 
@@ -84,6 +70,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func smell(c *cli.Context) error {
+	ifaces := strings.Split(ifaceList, ",")
+	ng := NosyGopher{
+		ifaces:      ifaces,
+		outpath:     outpath,
+		bpf:         bpf,
+		quiet:       quiet,
+		promisc:     promisc,
+		snapshotLen: 1024,
+		timeout:     30 * time.Second,
+	}
+	err := ng.Sniff()
+	if err != nil {
+		return fmt.Errorf("nosy gopher has issues: %s", err.Error())
+	}
+	return nil
 }
 
 func listInterfaces(c *cli.Context) error {
