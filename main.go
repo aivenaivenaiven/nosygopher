@@ -36,33 +36,33 @@ func main() {
 			Usage: "print contents of packets on a network interface",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "interface",
+					Name:        "interface, i",
 					Value:       "en0",
 					Usage:       "comma-separated list of interface devices to sniff on (e.g. en0,bridge0)",
 					Destination: &ifaceList,
 				},
 				cli.StringFlag{
-					Name:        "outpath",
+					Name:        "outpath, o",
 					Usage:       "path to write pcap file to, if left empty will not write",
 					Destination: &outpath,
 				},
 				cli.StringFlag{
-					Name:        "bpf",
+					Name:        "bpf, b",
 					Usage:       "berkeley packet filter string ('tcp and port 80')",
 					Destination: &bpf,
 				},
 				cli.BoolFlag{
-					Name:        "quiet",
+					Name:        "quiet, q",
 					Usage:       "if present will not log to stdout",
 					Destination: &quiet,
 				},
 				cli.BoolFlag{
-					Name:        "promiscuous",
+					Name:        "promiscuous, p",
 					Usage:       "capture in promiscuous mode",
 					Destination: &promisc,
 				},
 			},
-			Action: smell,
+			Action: sniff,
 		},
 	}
 
@@ -72,7 +72,7 @@ func main() {
 	}
 }
 
-func smell(c *cli.Context) error {
+func sniff(c *cli.Context) error {
 	ifaces := strings.Split(ifaceList, ",")
 	ng := NosyGopher{
 		ifaces:      ifaces,
