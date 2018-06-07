@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"bytes"
 	"reflect"
 
 	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/pcapgo"
 )
@@ -22,7 +24,12 @@ type NosyGopher struct {
 type NGResult struct {
 	err    error
 	packet gopacket.Packet
+	dev string
 	writer *pcapgo.Writer
+}
+
+type FooImpl struct {
+	protocol layers.IPProtocol
 }
 
 func (ng *NosyGopher) Sniff() error {
@@ -38,20 +45,7 @@ func (ng *NosyGopher) Sniff() error {
 		}
 
 		if !ng.quiet {
-			// fmt.Println(res.packet)
-			// if app := res.packet.ApplicationLayer(); app != nil {
-			// 	fmt.Printf("PAYLOAD: %v\n", string(app.Payload()))
-			// }
-			if net := res.packet.NetworkLayer(); net != nil {
-				fmt.Printf("NETWORK LAYER: %+v\n", net)
-				fmt.Printf("OK: %v\n", net.(reflect.TypeOf(net)))
-				fmt.Printf("STUFF: %v\n", reflect.TypeOf(net))
-				// fmt.Printf("STUFF: %v\n", net.Protocol)
-				// for i := 0; i < netType.NumMethod(); i++ {
-				//     method := netType.Method(i)
-				//     fmt.Println(method.Name)
-				// }
-			}
+			fmt.Println(ng.packetString(res))
 		}
 		if res.writer != nil {
 			res.writer.WritePacket(res.packet.Metadata().CaptureInfo, res.packet.Data())
@@ -69,7 +63,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 		// Open device
 		handle, err := pcap.OpenLive(dev, int32(ng.snapshotLen), ng.promisc, ng.timeout)
 		if err != nil {
-			c <- NGResult{packet: nil, writer: nil, err: err}
+			c <- NGResult{packet: nil, writer: nil, dev: dev, err: err}
 			return
 		}
 		defer handle.Close()
@@ -77,7 +71,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 		// Set BPFFilter if present
 		if ng.bpf != "" {
 			if err := handle.SetBPFFilter(ng.bpf); err != nil {
-				c <- NGResult{packet: nil, writer: nil, err: err}
+				c <- NGResult{packet: nil, writer: nil, dev: dev, err: err}
 				return
 			}
 		}
@@ -92,7 +86,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 
 		packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 		for packet := range packetSource.Packets() {
-			c <- NGResult{packet: packet, writer: writer, err: nil}
+			c <- NGResult{packet: packet, writer: writer, dev: dev, err: nil}
 		}
 	}()
 
@@ -100,9 +94,52 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 }
 
 // Format a packet for printing succinctly
-// func (ng *NosyGopher) printPacket(packet gopacket.Packet) {
-// 	var srcIP, destIP, proto
-// }
+func (ng *NosyGopher) packetString(res NGResult) string {
+	// "Dev - TIMESTAMP - PacketLength Protocol SrcIP > DestIP
+	//  "
+
+	var b bytes.Buffer
+
+	fmt.Fprintf(&b, "%s -", res.dev)
+	if !res.packet.Metadata().Timestamp.IsZero() {
+		fmt.Fprintf(&b, " %v -", res.packet.Metadata().Timestamp)
+	}
+
+	fmt.Fprintf(&b, " %d bytes", res.packet.Metadata().Length)
+
+	netVal := reflect.ValueOf(res.packet.NetworkLayer())
+	transVal := reflect.ValueOf(res.packet.TransportLayer())
+
+	SrcIp, SrcPort := fieldString(netVal, "SrcIP"), fieldString(transVal, "SrcPort")
+	DstIp, DstPort := fieldString(netVal, "DstIP"), fieldString(transVal, "DstPort")
+	var transBytes = bytes.Buffer
+	transBytes.WriteString(SrcIp)
+	if SrcPort != "" { fmt.Fprintf(&transBytes, ":%s", SrcPort) }
+	if
+
+
+	fmt.Fprintf(&b, " %s", fieldString(netVal, "Protocol"))
+
+
+	return b.String()
+}
+
+// 
+
+// String representation of an aribtrary reflect value field
+func fieldString(v reflect.Value, name string) string {
+ 	val := reflect.Indirect(v)
+	if !val.IsValid() {
+		return ""
+	}
+
+	val = val.FieldByName(name)
+	if !val.IsValid() {
+		return ""
+	}
+
+	return fmt.Sprintf("%s", val)
+}
 
 // Creates file, writer and writes file header
 func (ng *NosyGopher) writer(dev string, handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
