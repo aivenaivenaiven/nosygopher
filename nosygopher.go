@@ -1,11 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
-	"time"
-	"bytes"
 	"reflect"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -24,7 +24,7 @@ type NosyGopher struct {
 type NGResult struct {
 	err    error
 	packet gopacket.Packet
-	dev string
+	dev    string
 	writer *pcapgo.Writer
 }
 
@@ -95,8 +95,7 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 
 // Format a packet for printing succinctly
 func (ng *NosyGopher) packetString(res NGResult) string {
-	// "Dev - TIMESTAMP - PacketLength Protocol SrcIP > DestIP
-	//  "
+	// "Dev - Timestamp - PacketLength Protocol SrcIP:SrcPort > DestIP:DstPort
 
 	var b bytes.Buffer
 
@@ -109,26 +108,32 @@ func (ng *NosyGopher) packetString(res NGResult) string {
 
 	netVal := reflect.ValueOf(res.packet.NetworkLayer())
 	transVal := reflect.ValueOf(res.packet.TransportLayer())
+	fmt.Fprintf(&b, " %s ", fieldString(netVal, "Protocol"))
 
+	var transBytes bytes.Buffer
 	SrcIp, SrcPort := fieldString(netVal, "SrcIP"), fieldString(transVal, "SrcPort")
 	DstIp, DstPort := fieldString(netVal, "DstIP"), fieldString(transVal, "DstPort")
-	var transBytes = bytes.Buffer
 	transBytes.WriteString(SrcIp)
-	if SrcPort != "" { fmt.Fprintf(&transBytes, ":%s", SrcPort) }
-	if
+	if SrcPort != "" {
+		fmt.Fprintf(&transBytes, ":%s", SrcPort)
+	}
+	if transBytes.Len() > 0 {
+		transBytes.WriteString(" > ")
+	}
+	transBytes.WriteString(DstIp)
+	if DstPort != "" {
+		fmt.Fprintf(&transBytes, ":%s", DstPort)
+	}
 
-
-	fmt.Fprintf(&b, " %s", fieldString(netVal, "Protocol"))
-
-
+	b.WriteString(transBytes.String())
 	return b.String()
 }
 
-// 
+//
 
 // String representation of an aribtrary reflect value field
 func fieldString(v reflect.Value, name string) string {
- 	val := reflect.Indirect(v)
+	val := reflect.Indirect(v)
 	if !val.IsValid() {
 		return ""
 	}
