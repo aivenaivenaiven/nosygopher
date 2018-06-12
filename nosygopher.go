@@ -128,40 +128,10 @@ func (ng *NosyGopher) packetString(packet gopacket.Packet) string {
 	return b.String()
 }
 
-// String representation of an aribtrary reflect value field
-func fieldString(v reflect.Value, name string) string {
-	val := reflect.Indirect(v)
-	if !val.IsValid() {
-		return ""
-	}
-
-	val = val.FieldByName(name)
-	if !val.IsValid() {
-		return ""
-	}
-
-	return fmt.Sprintf("%s", val)
-}
-
 // Creates file, writer and writes file header
 func (ng *NosyGopher) writer(dev string, handle *pcap.Handle) (*pcapgo.Writer, *os.File) {
 	f, _ := os.Create(dev + "_" + ng.outpath)
 	w := pcapgo.NewWriter(f)
 	w.WriteFileHeader(uint32(ng.snapshotLen), handle.LinkType())
 	return w, f
-}
-
-// Variadic fanin function
-func fanin(inputs ...<-chan NGResult) <-chan NGResult {
-	agg := make(chan NGResult)
-
-	for _, ch := range inputs {
-		go func(c <-chan NGResult) {
-			for msg := range c {
-				agg <- msg
-			}
-		}(ch)
-	}
-
-	return agg
 }
