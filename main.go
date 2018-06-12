@@ -15,6 +15,7 @@ var (
 	ifaceList string
 	outpath   string
 	bpf       string
+	re        string
 	quiet     bool = false
 	promisc   bool = false
 )
@@ -51,6 +52,11 @@ func main() {
 					Usage:       "berkeley packet filter string ('tcp and port 80')",
 					Destination: &bpf,
 				},
+				cli.StringFlag{
+					Name:        "regex, r",
+					Usage:       "regular expression to match against data payload of packet",
+					Destination: &re,
+				},
 				cli.BoolFlag{
 					Name:        "quiet, q",
 					Usage:       "if present will not log to stdout",
@@ -74,10 +80,12 @@ func main() {
 
 func sniff(c *cli.Context) error {
 	ifaces := strings.Split(ifaceList, ",")
+
 	ng := NosyGopher{
 		ifaces:      ifaces,
 		outpath:     outpath,
 		bpf:         bpf,
+		re:          re,
 		quiet:       quiet,
 		promisc:     promisc,
 		snapshotLen: 1024,

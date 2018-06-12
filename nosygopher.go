@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/google/gopacket"
@@ -13,11 +14,11 @@ import (
 )
 
 type NosyGopher struct {
-	ifaces         []string
-	outpath, bpf   string
-	quiet, promisc bool
-	snapshotLen    int
-	timeout        time.Duration
+	ifaces           []string
+	outpath, bpf, re string
+	quiet, promisc   bool
+	snapshotLen      int
+	timeout          time.Duration
 }
 
 type NGResult struct {
@@ -39,7 +40,9 @@ func (ng *NosyGopher) Sniff() error {
 			return res.err
 		}
 
-		ng.handleResult(res)
+		if err := ng.handleResult(res); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -84,7 +87,20 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 }
 
 // Handle NGResult from device channel
-func(ng *NosyGopher) handleResult(res NGResult) {
+func (ng *NosyGopher) handleResult(res NGResult) error {
+	if ng.re != "" {
+		re, err := regexp.Compile(ng.re)
+		if err != nil {
+			return err
+		}
+
+		// Drop result if no match found in payload
+		app := res.packet.ApplicationLayer()
+		if app == nil || re.Find(app.Payload()) == nil {
+			return nil
+		}
+	}
+
 	if !ng.quiet {
 		fmt.Printf("%s - %s\n", res.dev, ng.packetString(res.packet))
 	}
@@ -92,6 +108,8 @@ func(ng *NosyGopher) handleResult(res NGResult) {
 	if res.writer != nil {
 		res.writer.WritePacket(res.packet.Metadata().CaptureInfo, res.packet.Data())
 	}
+
+	return nil
 }
 
 // Format a packet for printing succinctly, e.g.
@@ -124,7 +142,8 @@ func (ng *NosyGopher) packetString(packet gopacket.Packet) string {
 		fmt.Fprintf(&transBytes, ":%s", DstPort)
 	}
 
-	b.WriteString(transBytes.String())
+	b.Write(transBytes.Bytes())
+
 	return b.String()
 }
 
