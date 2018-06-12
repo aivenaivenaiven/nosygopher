@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
 	"github.com/google/gopacket/pcapgo"
 )
@@ -28,10 +27,6 @@ type NGResult struct {
 	writer *pcapgo.Writer
 }
 
-type FooImpl struct {
-	protocol layers.IPProtocol
-}
-
 func (ng *NosyGopher) Sniff() error {
 	var chans []<-chan NGResult
 	for _, dev := range ng.ifaces {
@@ -44,12 +39,7 @@ func (ng *NosyGopher) Sniff() error {
 			return res.err
 		}
 
-		if !ng.quiet {
-			fmt.Println(ng.packetString(res))
-		}
-		if res.writer != nil {
-			res.writer.WritePacket(res.packet.Metadata().CaptureInfo, res.packet.Data())
-		}
+		ng.handleResult(res)
 	}
 
 	return nil
@@ -93,21 +83,30 @@ func (ng *NosyGopher) sniffDevice(dev string) <-chan NGResult {
 	return c
 }
 
-// Format a packet for printing succinctly
-func (ng *NosyGopher) packetString(res NGResult) string {
-	// "Dev - Timestamp - PacketLength Protocol SrcIP:SrcPort > DestIP:DstPort
-
-	var b bytes.Buffer
-
-	fmt.Fprintf(&b, "%s -", res.dev)
-	if !res.packet.Metadata().Timestamp.IsZero() {
-		fmt.Fprintf(&b, " %v -", res.packet.Metadata().Timestamp)
+// Handle NGResult from device channel
+func(ng *NosyGopher) handleResult(res NGResult) {
+	if !ng.quiet {
+		fmt.Printf("%s - %s\n", res.dev, ng.packetString(res.packet))
 	}
 
-	fmt.Fprintf(&b, " %d bytes", res.packet.Metadata().Length)
+	if res.writer != nil {
+		res.writer.WritePacket(res.packet.Metadata().CaptureInfo, res.packet.Data())
+	}
+}
 
-	netVal := reflect.ValueOf(res.packet.NetworkLayer())
-	transVal := reflect.ValueOf(res.packet.TransportLayer())
+// Format a packet for printing succinctly, e.g.
+// "Device - Timestamp - PacketLength Protocol SrcIP:SrcPort > DestIP:DstPort
+func (ng *NosyGopher) packetString(packet gopacket.Packet) string {
+	var b bytes.Buffer
+
+	if !packet.Metadata().Timestamp.IsZero() {
+		fmt.Fprintf(&b, " %v -", packet.Metadata().Timestamp)
+	}
+
+	fmt.Fprintf(&b, " %d bytes", packet.Metadata().Length)
+
+	netVal := reflect.ValueOf(packet.NetworkLayer())
+	transVal := reflect.ValueOf(packet.TransportLayer())
 	fmt.Fprintf(&b, " %s ", fieldString(netVal, "Protocol"))
 
 	var transBytes bytes.Buffer
