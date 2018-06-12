@@ -2,9 +2,12 @@
 
 nosygopher is a Golang command line utility for sniffing those smelly network packets.
 
+![NG Example](https://user-images.githubusercontent.com/5217789/41317369-fbb74dee-6e62-11e8-9940-90735ea41b3e.gif)
+
 ## Features
 - List network interfaces on the system which nosygopher can capture from with `nosygopher list`
 - Capture packets from multiple interface devices concurrently, e.g. `nosygopher sniff -i en0,vboxnet0,ipsec0`
+- Provide a regex to match against packet payloads, e.g. `nosygopher sniff -i en0 -r 'HTTP'`
 
 ## Installation
 
