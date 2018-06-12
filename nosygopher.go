@@ -128,8 +128,6 @@ func (ng *NosyGopher) packetString(packet gopacket.Packet) string {
 	return b.String()
 }
 
-//
-
 // String representation of an aribtrary reflect value field
 func fieldString(v reflect.Value, name string) string {
 	val := reflect.Indirect(v)
