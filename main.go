@@ -24,7 +24,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "nosygopher"
 	app.Usage = "sniff things"
-	app.Version = "0.0.1"
+	app.Version = "0.1.1"
 
 	app.Commands = []cli.Command{
 		cli.Command{
